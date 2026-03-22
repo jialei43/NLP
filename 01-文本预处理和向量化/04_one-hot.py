@@ -14,7 +14,7 @@ def dm_onehot_gen():
     # 1 准备语料 vocabs
     vocabs = {"周杰伦", "陈奕迅", "王力宏", "李宗盛", "吴亦凡", "鹿晗"}
 
-    # 2 实例化词汇映射器Tokenizer, 使用映射器拟合现有文本数据 (内部生成index_word word_index)
+    # 2 实例化词汇映射器Tokenizer, 使用映射器拟合现有文本数据 (内部去重且生成index_word word_index)
     # 2-1 注意idx序号-1
     mytokenizer = Tokenizer()
     mytokenizer.fit_on_texts(texts=vocabs)
