@@ -8,6 +8,7 @@ import pandas as pd
 
 # 获取文本中的形容词
 def get_adjective(text):
+    #
     words = pseg.lcut(text)
     adjectives = []
     for word, flag in words:
