@@ -1,6 +1,7 @@
 import string
 
 import torch
+from keras.preprocessing import sequence
 from torch.utils.data import Dataset, DataLoader
 
 # 词表
@@ -92,15 +93,24 @@ class NameClassDataSet(Dataset):
         """
         y = self.y_data[index]
         x = self.x_data[index]
+        MAX_LENGTH = 10
         
         # 获取国家
         tensor_y = torch.tensor(categories.index(y),dtype=torch.long)
-        # 创建 姓名 对应的全0矩阵
-        tensor_x = torch.zeros(len(x), letters_num,dtype=torch.float32)
-        # 遍历姓名
-        for i, letter in enumerate(x):
-            # 创建姓名对应矩阵 ONE-HOT
-            tensor_x[i, letters.index(letter)] = 1
+        # # 创建 姓名 对应的全0矩阵
+        # tensor_x = torch.zeros(len(x), letters_num,dtype=torch.float32)
+        # # 遍历姓名
+        # for i, letter in enumerate(x):
+        #     # 创建姓名对应矩阵 ONE-HOT
+        #     tensor_x[i, letters.index(letter)] = 1
+        # --- 修改处：统一长度为 MAX_LENGTH ---
+        # 创建 [MAX_LENGTH, letters_num] 的全0矩阵
+        tensor_x = torch.zeros(MAX_LENGTH, letters_num, dtype=torch.float32)
+
+        # 遍历姓名，如果姓名超过 MAX_LENGTH 则截断，不足则保留为0（即Padding）
+        for i, letter in enumerate(x[:MAX_LENGTH]):
+            if letter in letters:
+                tensor_x[i, letters.index(letter)] = 1
 
         return tensor_x, tensor_y
 # 数据加载
@@ -111,7 +121,7 @@ def data_loader():
     dataSet = NameClassDataSet(x_data, y_data)
     # 创建数据加载器
     # 批次大小 batch_size shuffle 是否打乱
-    dataloader = DataLoader(dataSet, batch_size=1, shuffle=True)
+    dataloader = DataLoader(dataSet, batch_size=64, shuffle=True)
 
     # 返回
     return dataloader

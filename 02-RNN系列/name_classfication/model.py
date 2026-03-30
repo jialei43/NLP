@@ -29,11 +29,14 @@ class RNNModel(nn.Module):
         self.model_type = model_type
         # 定义RNN
         if model_type == ModelType.LSTM:
-            self.rnn = nn.LSTM(input_size, hidden_size, num_layers)
+            # batch_first=true 此时输入 x 就必须是 [batch, seq_len, input_size]
+            # 输出 out 也会变为 [batch, seq_len, hidden_size]
+            # 本质：batch_first 只是改变 RNN 接受输入和返回输出张量的维度顺序，不改变计算逻辑。
+            self.rnn = nn.LSTM(input_size, hidden_size, num_layers, batch_first=False)
         elif model_type == ModelType.GRU:
-            self.rnn = nn.GRU(input_size, hidden_size, num_layers)
+            self.rnn = nn.GRU(input_size, hidden_size, num_layers, batch_first=False)
         else:
-            self.rnn = nn.RNN(input_size, hidden_size, num_layers)
+            self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=False)
 
         # 定义全连接层
         self.fc = nn.Linear(hidden_size, output_size)
@@ -45,15 +48,16 @@ class RNNModel(nn.Module):
         # hidden: (num_layers, batch, hidden_size)
         cn = None
         # 将x的维度变为 (seq_len, batch, input_size)
-        x = x.unsqueeze(dim=1)
+        # x = x.unsqueeze(dim=1)
+        x = x.transpose_(0, 1)
         if self.model_type == ModelType.LSTM:
             out, (hn, cn) = self.rnn(x, (h0,c0))
         else:
             out, hn = self.rnn(x, h0)
         # 输出维度: (seq_len, batch, hidden_size)-> (batch, hidden_size)
-        # 获取最后一步的输出结果，通过索引切片来获取最后一步的输出结果
+        # 获取最后一个时间步的输出结果，通过索引切片来获取最后一步的输出结果
         out = out[-1]
-        # 全连接层
+        # 全连接层 映射到输出维度 (batch, hidden_size)-> (batch, output_size)
         out = self.fc(out)
         # 激活函数
         out = self.logsoftmax(out)
