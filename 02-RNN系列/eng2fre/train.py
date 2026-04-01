@@ -12,7 +12,7 @@ from torch import optim, nn
 
 # 模型训练参数
 mylr = 1e-4
-epochs = 10
+epochs = 50
 # 设置teacher_forcing比率为0.5
 teacher_forcing_ratio = 0.5
 print_interval_num = 1600

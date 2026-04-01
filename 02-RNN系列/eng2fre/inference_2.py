@@ -174,5 +174,5 @@ def eval():
 
 
 if __name__ == '__main__':
-    # plot_attention()
-    eval()
+    plot_attention()
+    # eval()
