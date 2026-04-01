@@ -115,7 +115,7 @@ class AttentionDecoderRNN(nn.Module):
         self.embedding = nn.Embedding(self.fre_vocab_size, self.hidden_size, padding_idx=2)
         # 注意力层 [隐藏层维度*2，最长序列长度]
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
-        # 注意力融合(线性层) [隐藏层维度*2，词向量大小]
+        # 注意力融合(线性层) [隐藏层维度*2，词向量维度]
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         # 惩罚系数 随机失活
         self.dropout = nn.Dropout(self.dropout_p)
@@ -157,12 +157,19 @@ class AttentionDecoderRNN(nn.Module):
         output = torch.cat((Q, C), -1)
         # 注意力融合 (线性层) [batch_size, seq_len, hidden_size]
         # self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        # [batch_size, seq_len, hidden_size]经过[hidden_size * 2, hidden_size(词向量维度)]
+        # 结果 output: [batch_size, seq_len, hidden_size(词向量维度)]
         output = torch.relu(self.attn_combine(output))
         # 6. GRU 和 输出层
         # 注意：如果 GRU 设置了 batch_first=True，hidden 依然维持 [1, batch, hidden]
+        # [batch_size, seq_len, hidden_size(词向量维度)]经过GRU [hidden_size(词向量维度), hidden_size]
+        # 输出结果 output: [batch_size, seq_len, hidden_size]
         output, hidden = self.gru(output, hidden)
-        # output 从 [batch, 1, hidden] 转为 [batch, vocab_size] 供 Loss 计算
-        output = self.out(output.squeeze(1))
+        # output 从 [batch, 1, hidden] 降维为 [batch, hidden]
+        output = output.squeeze(1)
+        # 经过out = nn.Linear(self.hidden_size, self.fre_vocab_size)
+        # 转换为 [batch,vocal_size] 供loss计算
+        output = self.out(output)
         # 激活函数 [batch_size, seq_len, vocab_size]
         output = self.logsoftmax(output)
         return output, hidden, attn_weights

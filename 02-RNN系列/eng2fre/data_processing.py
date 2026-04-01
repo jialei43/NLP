@@ -169,7 +169,7 @@ def data_loader():
     # print(eng_word2idx, eng_idx2word, eng_word_num, fre_word2idx, fre_idx2word, fre_word_num, data_pairs)
     pairs = pairs_dataset(data_pairs, eng_word2idx, fre_word2idx)
     # print(pairs.__getitem__(0))
-    dataloader = DataLoader(dataset=pairs, batch_size=8, shuffle=True)
+    dataloader = DataLoader(dataset=pairs, batch_size=64, shuffle=True)
     return dataloader,eng_word2idx, eng_idx2word, eng_word_num, fre_word2idx, fre_idx2word, fre_word_num
 
 
