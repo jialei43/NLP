@@ -18,9 +18,11 @@ SOS_token = 0
 # 结束标志 EOS->End Of Sequence
 EOS_token = 1
 # 用于设置每个句子样本的中间语义张量c长度都为10。
-MAX_LENGTH = 10
+MAX_LENGTH = 7
+#
+PAD_token = 2
 # 数据文件路径
-data_path = './data/eng-fra-v2.txt'
+data_path ='../data/eng-fra-v2.txt'
 
 # 文本清洗工具函数
 def normalizeString(s: str):
@@ -59,9 +61,9 @@ def read_data(path):
 
     # 构建词表
     # 英文
-    eng_word2idx = {"SOS": SOS_token, "EOS": EOS_token}
+    eng_word2idx = {"SOS": SOS_token, "EOS": EOS_token, "PAD": PAD_token}
     # 法文
-    fre_word2idx = {"SOS": SOS_token, "EOS": EOS_token}
+    fre_word2idx = fre_word2idx = {"SOS": SOS_token, "EOS": EOS_token, "PAD": PAD_token}
     # 词表起始加入索引大小
     eng_index = 3
     fre_index = 3
@@ -136,29 +138,19 @@ class pairs_dataset(Dataset):
         x_tensor = [self.eng_word2idx[word] for word in x_tensor.split(' ')]
         # 文本规范，x_tensor 设置做大长度，不足补充，太长截断
         if len(x_tensor) < MAX_LENGTH:
-            x_tensor += [2] * (MAX_LENGTH - len(x_tensor))
+            x_tensor += [PAD_token] * (MAX_LENGTH - len(x_tensor))
         else:
             x_tensor = x_tensor[:MAX_LENGTH]
-        # 添加结束标志
-        x_tensor.append(EOS_token)
-        # 转换为张量
-        x_tensor = torch.tensor(x_tensor, device=device,dtype=torch.long)
-        # 添加起始标志
-        x_tensor = torch.cat((torch.tensor([SOS_token]).to(device), x_tensor), dim=0)
+        x_tensor = torch.tensor(x_tensor + [EOS_token], dtype=torch.long, device=device)
 
         # 分割出y
         y_tensor = [self.fre_word2idx[word] for word in y_tensor.split(' ')]
         # 文本规范，y_tensor 设置做大长度，不足补充，太长截断
         if len(y_tensor) < MAX_LENGTH:
-            y_tensor += [2] * (MAX_LENGTH - len(y_tensor))
+            y_tensor += [PAD_token] * (MAX_LENGTH - len(y_tensor))
         else:
             y_tensor = y_tensor[:MAX_LENGTH]
-        # 添加结束标志
-        y_tensor.append(EOS_token)
-        # 转换为张量
-        y_tensor = torch.tensor(y_tensor, device=device,dtype=torch.long)
-        # 添加起始标志
-        y_tensor = torch.cat((torch.tensor([SOS_token]).to(device), y_tensor), dim=0)
+        y_tensor = torch.tensor([SOS_token]+y_tensor + [EOS_token], dtype=torch.long, device=device)
 
         return x_tensor, y_tensor
 

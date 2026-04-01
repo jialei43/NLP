@@ -2,40 +2,49 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
+import matplotlib
+
+matplotlib.use('TkAgg')
+
+# 设置中文字体
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'PingFang SC', 'Heiti SC']
+plt.rcParams['axes.unicode_minus'] = False
+
 from model import EncoderRNN, AttentionDecoderRNN, MAX_LENGTH
 from data_processing import device, normalizeString, data_loader, EOS_token, SOS_token
 
 
 def seq2seq_eval(x,encoderRnn,atten_decoderRnn,fre_idx2word):
-    # 初始化隐藏状态
-    h0 = encoderRnn.initHidden(1)
-    # encoder模型训练
-    encoder_output, encode_hidden = encoderRnn(x,h0)
-    # atten_decoderRnn模型训练
-    encoder_outputs_c = encoder_output
-    decoder_hidden = encode_hidden
-    # 构建输入数据
-    decoder_input = torch.tensor([[SOS_token]],device=device,dtype=torch.long)
-    # 存储生成的翻译文本
-    seq_list = []
-    # atten 矩阵初始化
-    # 词汇经过注意力层输出的权重矩阵[seq_len,max]
-    atten_matrix = torch.zeros(MAX_LENGTH+2,MAX_LENGTH+2,device= device)
-    for idx in range(MAX_LENGTH+2):
-        output, hidden, attn_weights = atten_decoderRnn(decoder_input, decoder_hidden, encoder_outputs_c)
-        # 填充weight
-        atten_matrix[idx] = attn_weights
-        # 获取最大的结果
-        input_y = torch.argmax(output, dim=-1).view(1, -1)
-        # 判断是否截止符
-        if input_y.item() == EOS_token:
-            seq_list.append('<EOS>')
-            break
-        else:
-            # 填充到列表中
-            seq_list.append(fre_idx2word[input_y.item()])
+    with torch.no_grad():
+        # 初始化隐藏状态
+        h0 = encoderRnn.initHidden(1)
+        # encoder模型训练
+        encoder_output, encode_hidden = encoderRnn(x,h0)
+        # atten_decoderRnn模型训练
+        encoder_outputs_c = encoder_output
+        decoder_hidden = encode_hidden
+        # 构建输入数据
+        decoder_input = torch.tensor([[SOS_token]],device=device,dtype=torch.long)
+        # 存储生成的翻译文本
+        seq_list = []
+        # atten 矩阵初始化
+        # 词汇经过注意力层输出的权重矩阵[seq_len,max]
+        atten_matrix = torch.zeros(MAX_LENGTH+1,MAX_LENGTH+1,device= device)
+        for idx in range(MAX_LENGTH+1):
+            output, hidden, attn_weights = atten_decoderRnn(decoder_input, decoder_hidden, encoder_outputs_c)
+            # 填充weight
+            atten_matrix[idx] = attn_weights
+            # 获取最大的结果
+            input_y = torch.argmax(output, dim=-1).view(1, -1)
+            # 判断是否截止符
+            if input_y.item() == EOS_token:
+                seq_list.append('<EOS>')
+                break
+            else:
+                # 填充到列表中
+                seq_list.append(fre_idx2word[input_y.item()])
 
-    return seq_list, atten_matrix[:idx + 1]
+    return seq_list,seq_list, atten_matrix[:len(seq_list)]
 
 
 # 注意力可视化热力图
@@ -45,7 +54,7 @@ def plot_attention():
 
     # 模型实例化
     encoderRnn = EncoderRNN(eng_vocab_size=eng_word_num, hidden_size=32).to(device)
-    atten_decoderRnn = AttentionDecoderRNN(fre_vocab_size=fre_word_num, hidden_size=32).to(device)
+    atten_decoderRnn = AttentionDecoderRNN(fre_vocab_size=fre_word_num, hidden_size=32,max_length=MAX_LENGTH+1).to(device)
 
     # 模型加载
     encoderRnn.load_state_dict(torch.load(r'./model/encoderRnn.pth',map_location=device))
@@ -67,13 +76,14 @@ def plot_attention():
         x += [2] * (MAX_LENGTH - len(x))
     else:
         x = x[:MAX_LENGTH]
+    x = torch.tensor(x + [EOS_token], dtype=torch.long, device=device).unsqueeze(0)
 
-    # 添加结束标志
-    x.append(EOS_token)
-    # 转换为张量
-    x = torch.tensor(x,dtype=torch.long).to(device)
-    # 添加起始标志
-    x = torch.cat((torch.tensor([SOS_token]).to(device), x), dim=0).unsqueeze(0)
+    # # 添加结束标志
+    # x.append(EOS_token)
+    # # 转换为张量
+    # x = torch.tensor(x,dtype=torch.long).to(device)
+    # # 添加起始标志
+    # x = torch.cat((torch.tensor([SOS_token]).to(device), x), dim=0).unsqueeze(0)
 
 
     # 模型推理

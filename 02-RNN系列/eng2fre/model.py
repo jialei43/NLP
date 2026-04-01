@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from data_processing import data_loader, device
+from data_processing import data_loader, device,PAD_token,MAX_LENGTH
 
 
 class EncoderRNN(nn.Module):
@@ -23,7 +23,7 @@ class EncoderRNN(nn.Module):
         self.eng_vocab_size = eng_vocab_size
         self.hidden_size = hidden_size
         # emb
-        self.emb = nn.Embedding(num_embeddings=self.eng_vocab_size, embedding_dim=self.hidden_size, padding_idx=2)
+        self.emb = nn.Embedding(num_embeddings=self.eng_vocab_size, embedding_dim=self.hidden_size, padding_idx=PAD_token)
 
         # gru
         self.gru = nn.GRU(input_size=self.hidden_size, hidden_size=self.hidden_size, batch_first=True)
@@ -59,7 +59,7 @@ class DecoderRNN(nn.Module):
         self.hidden_size = hidden_size
         self.output_size = output_size
         # 定义嵌入层 [词向量大小=输出维度，嵌入维度(词向量维度)=隐藏层维度(这俩个是超参数可以随便设置，目前设置为一样)]
-        self.embedding = nn.Embedding(num_embeddings=output_size, embedding_dim=hidden_size, padding_idx=2)
+        self.embedding = nn.Embedding(num_embeddings=output_size, embedding_dim=hidden_size, padding_idx=PAD_token)
         # 定义GRU [嵌入维度(词向量维度)，隐藏层维度]
         self.gru = nn.GRU(self.hidden_size, self.hidden_size)
         # 输出层 [隐藏层维度，输出维度]
@@ -89,11 +89,11 @@ class DecoderRNN(nn.Module):
         return out, hn
 
 
-MAX_LENGTH = 10
+
 
 
 class AttentionDecoderRNN(nn.Module):
-    def __init__(self, fre_vocab_size, hidden_size, max_length=MAX_LENGTH + 2, dropout_p=0.1, ):
+    def __init__(self, fre_vocab_size, hidden_size, max_length, dropout_p=0.1, ):
         """
         初始化
         Args:
@@ -112,7 +112,7 @@ class AttentionDecoderRNN(nn.Module):
         # 词向量维度
         self.fre_vocab_size = fre_vocab_size
         # 嵌入层 [词向量大小，嵌入维度(词向量维度)]
-        self.embedding = nn.Embedding(self.fre_vocab_size, self.hidden_size, padding_idx=2)
+        self.embedding = nn.Embedding(self.fre_vocab_size, self.hidden_size, padding_idx=PAD_token)
         # 注意力层 [隐藏层维度*2，最长序列长度]
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
         # 注意力融合(线性层) [隐藏层维度*2，词向量维度]
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     # 加载数据
     # dataloader, eng_word_num, eng_idx2word, eng_word2idx, fre_word2idx, fre_idx2word, fre_word_num = data_loader()
     # 模型实例化
-    atten_decoder_model = AttentionDecoderRNN(fre_vocab_size=fre_word_num, hidden_size=32, dropout_p=0.1)
+    atten_decoder_model = AttentionDecoderRNN(fre_vocab_size=fre_word_num, hidden_size=32,max_length=MAX_LENGTH + 1, dropout_p=0.1)
     atten_decoder_model.to(device)
 
     # 遍历数据
@@ -194,19 +194,19 @@ if __name__ == '__main__':
         # hn: [1, 1, hidden_size]
         # 初始化隐藏状态
         h0 = encoder_model.initHidden(x.size(0))
-
-        x = x.to(device)
-        y = y.to(device)
         out, hn = encoder_model(x, h0)
         print(x.shape)
         print(y.shape)
         print(out.shape)
         print(hn.shape)
         # 构建 V (encoder_output)
-        encoder_output = torch.zeros(x.size(0), MAX_LENGTH + 2, 32, device=device)
-        for i in range(min(out.shape[1], MAX_LENGTH + 2)):
-            encoder_output[:, i, :] = out[:, i, :]
-        print(torch.equal(encoder_output, out))
+        # encoder_output = torch.zeros(x.size(0), MAX_LENGTH, 32, device=device)
+        # for i in range(min(out.shape[1], MAX_LENGTH)):
+        #     encoder_output[:, i, :] = out[:, i, :]
+        # print(torch.equal(encoder_output, out))
+
+        encoder_output = out
+        decoder_hidden = hn
 
         # 解码器按时间步解码
         for i in range(y.shape[1]):
@@ -221,10 +221,10 @@ if __name__ == '__main__':
             decoder_input = y[:, i].unsqueeze(1)  # [batch_size, 1]
             decoder_input = decoder_input.to(device)
             # 解码器解码
-            out, hn, atten_weight = atten_decoder_model(decoder_input, hn, encoder_output)
+            out, decoder_hidden, atten_weight = atten_decoder_model(decoder_input, decoder_hidden, encoder_output)
             # 解码器输出
             print(out.shape)
-            print(hn.shape)
+            print(decoder_hidden.shape)
             print(f'attn_weights:{atten_weight}')
             print(atten_weight.shape)
             print('-' * 34)
