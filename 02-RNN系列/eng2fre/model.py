@@ -157,7 +157,7 @@ class AttentionDecoderRNN(nn.Module):
         output = torch.cat((Q, C), -1)
         # 注意力融合 (线性层) [batch_size, seq_len, hidden_size]
         # self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
-        # [batch_size, seq_len, hidden_size]经过[hidden_size * 2, hidden_size(词向量维度)]
+        # [batch_size, seq_len, hidden_size*2]经过[hidden_size * 2, hidden_size(词向量维度)]
         # 结果 output: [batch_size, seq_len, hidden_size(词向量维度)]
         output = torch.relu(self.attn_combine(output))
         # 6. GRU 和 输出层
