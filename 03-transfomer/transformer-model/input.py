@@ -74,6 +74,15 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:, :x.shape[1], :]
         return self.dropout(x)
 
+
+# 前馈全连接层PositionwiseFeedForward实现思路分析
+# 1 init函数  (self,  d_model, d_ff, dropout=0.1):
+    # 定义线性层self.linear1 self.linear2, self.dropout层
+# 2 forward(self, x)
+    # 数据经过self.w1(x) -> F.relu() ->self.dropout() ->self.w2 返回
+
+
+
 if __name__ == '__main__':
     d_model = 20
     dropout_p = 0
